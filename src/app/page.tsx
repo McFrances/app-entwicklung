@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Vorgangsliste, type Vorgang } from "@/components/Vorgangsliste";
 
 // Noch keine Datenquelle: Die Liste startet leer.
@@ -21,15 +22,15 @@ export default function Startseite() {
       {/* Großer Button, fest am unteren Rand – gut mit dem Daumen erreichbar */}
       <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-background/95 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur dark:border-slate-800">
         <div className="mx-auto max-w-xl">
-          <button
-            type="button"
+          <Link
+            href="/brief/neu"
             className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 text-lg font-semibold text-white shadow-lg transition hover:bg-blue-700 focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-400 active:scale-[0.98] active:bg-blue-700"
           >
             <span aria-hidden="true" className="text-2xl leading-none">
               +
             </span>
             Brief hinzufügen
-          </button>
+          </Link>
         </div>
       </div>
     </div>

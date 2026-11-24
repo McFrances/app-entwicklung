@@ -9,8 +9,11 @@ Voraussetzung: [Node.js](https://nodejs.org/) ab Version 20.9.
 
 ```bash
 npm install
+cp .env.example .env.local   # danach ANTHROPIC_API_KEY in .env.local eintragen
 npm run dev
 ```
+
+Den API-Schlüssel bekommst du unter https://platform.claude.com/ (Bereich „API Keys“).
 
 Dann im Browser http://localhost:3000 öffnen.
 

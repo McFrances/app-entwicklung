@@ -15,12 +15,19 @@ Umgesetzt:
 
 - Startseite mit der Vorgangsliste (zurzeit immer leer, noch keine Datenquelle) und einem
   Hinweis, solange keine Vorgänge vorhanden sind
-- Großer, fest am unteren Rand stehender Button „Brief hinzufügen“ (noch ohne Funktion)
+- Großer, fest am unteren Rand stehender Button „Brief hinzufügen“ → `/brief/neu`
+- Seite „Brief hinzufügen“ (`/brief/neu`): Fotos aufnehmen (Kamera) oder Bilder/PDF hochladen,
+  mehrere Seiten, Seiten entfernen. Fotos werden im Browser auf max. 2000 px verkleinert.
+- KI-Analyse über die Claude API (serverseitig): liefert `absender`, `kategorie`,
+  `zusammenfassung_einfach`, `was_ist_zu_tun` (Liste), `frist` (Datum oder null),
+  `folgen_bei_nichtstun`, `dringlichkeit` (niedrig/mittel/hoch)
+- Ergebnisansicht mit Dringlichkeit, Kategorie, Absender und Erklärungen; die Frist muss der
+  Nutzer bestätigen oder ändern. Unter jeder Erklärung steht der Hinweis, dass es keine
+  Rechtsberatung ist.
 
 Geplant (noch nicht umgesetzt):
 
-- Brief hinzufügen: Absender, Betreff, Eingangsdatum, optional Foto des Briefs
-- Vorgänge speichern und in der Liste anzeigen
+- Analysierte Briefe als Vorgänge speichern (inkl. bestätigter Frist) und in der Liste anzeigen
 - Vorgang öffnen, bearbeiten und als erledigt markieren
 - Fristen und Erinnerungen
 
@@ -31,8 +38,20 @@ Geplant (noch nicht umgesetzt):
 - **Tailwind CSS 4** (Konfiguration in `src/app/globals.css` über `@theme`, keine
   `tailwind.config`-Datei)
 - ESLint mit `eslint-config-next`
+- **Claude API** über das offizielle SDK `@anthropic-ai/sdk`, Modell `claude-opus-5-5`,
+  Structured Outputs mit Zod (`betaZodOutputFormat`), serverseitiger Fallback bei Ablehnungen
+  (`fallbacks: "default"`)
+  - `src/lib/brief-analyse.ts`: Zod-Schema der Antwort, erlaubte Dateitypen, Größenlimits
+    (gemeinsam für Browser und Server)
+  - `src/lib/claude.server.ts`: Prompt und API-Aufruf, nur auf dem Server (`server-only`)
+  - `src/app/api/brief/analysieren/route.ts`: Route Handler, nimmt `FormData` (Feld `seiten`)
+    entgegen, prüft Typ und Größe, gibt `{ analyse }` oder `{ fehler }` zurück
+  - Komponenten der Seite in `src/components/brief/`
 - Wiederverwendbare Komponenten liegen in `src/components/`, z. B. `Vorgangsliste.tsx`
   (enthält auch den Typ `Vorgang`)
+
+API-Schlüssel: `ANTHROPIC_API_KEY` in `.env.local` (Vorlage: `.env.example`). Der Schlüssel darf
+nie im Browser landen: kein `NEXT_PUBLIC_`-Präfix, Claude nur aus Server-Code aufrufen.
 
 Befehle:
 
@@ -56,4 +75,6 @@ Befehle:
 - Sichere Bereiche von Geräten mit Notch berücksichtigen (`env(safe-area-inset-*)`,
   `viewportFit: "cover"` ist gesetzt).
 - Hell- und Dunkelmodus unterstützen (`dark:`-Klassen, Farben in `globals.css`).
+- KI-Erklärungen immer mit dem Hinweis „keine Rechtsberatung“ (`KeineRechtsberatung`) anzeigen.
+  Von der KI erkannte Fristen nie ungeprüft übernehmen, sondern vom Nutzer bestätigen lassen.
 - Vor dem Committen `npm run lint` und `npm run build` ausführen.
