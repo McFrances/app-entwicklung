@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 import type { BriefAnalyse } from "@/lib/brief-analyse";
-import { FristBestaetigung } from "./FristBestaetigung";
 import { KeineRechtsberatung } from "./KeineRechtsberatung";
 
-const DRINGLICHKEIT = {
+export const DRINGLICHKEIT = {
   hoch: {
     text: "Dringend",
     klassen: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
@@ -18,7 +17,7 @@ const DRINGLICHKEIT = {
   },
 } as const;
 
-function Karte({ titel, children }: { titel: string; children: ReactNode }) {
+export function Karte({ titel, children }: { titel: string; children: ReactNode }) {
   return (
     <section className="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-800">
       <h2 className="mb-2 text-sm font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
@@ -29,7 +28,15 @@ function Karte({ titel, children }: { titel: string; children: ReactNode }) {
   );
 }
 
-export function AnalyseErgebnis({ analyse }: { analyse: BriefAnalyse }) {
+type AnalyseErgebnisProps = {
+  analyse: BriefAnalyse;
+  /** Der Bereich für die Frist (mit Bestätigung), je nach Seite mit anderem Speicherverhalten. */
+  fristBereich: ReactNode;
+  /** Zusätzliche Karten direkt unter dem Kopf, z. B. der Status. */
+  extra?: ReactNode;
+};
+
+export function AnalyseErgebnis({ analyse, fristBereich, extra }: AnalyseErgebnisProps) {
   const dringlichkeit = DRINGLICHKEIT[analyse.dringlichkeit];
 
   return (
@@ -47,9 +54,9 @@ export function AnalyseErgebnis({ analyse }: { analyse: BriefAnalyse }) {
         <p className="text-xl font-semibold break-words">{analyse.absender}</p>
       </div>
 
-      <Karte titel="Frist">
-        <FristBestaetigung vorschlag={analyse.frist} />
-      </Karte>
+      {extra}
+
+      <Karte titel="Frist">{fristBereich}</Karte>
 
       <Karte titel="Worum geht es?">
         <p className="text-base leading-relaxed">{analyse.zusammenfassung_einfach}</p>

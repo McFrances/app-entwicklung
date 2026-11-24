@@ -1,13 +1,11 @@
 import Link from "next/link";
-import { Vorgangsliste, type Vorgang } from "@/components/Vorgangsliste";
-
-// Noch keine Datenquelle: Die Liste startet leer.
-const vorgaenge: Vorgang[] = [];
+import { Suspense } from "react";
+import { UebersichtLaedt, VorgangsUebersicht } from "@/components/VorgangsUebersicht";
 
 export default function Startseite() {
   return (
     <div className="mx-auto flex w-full max-w-xl flex-1 flex-col px-4 pt-[max(1.5rem,env(safe-area-inset-top))]">
-      <header className="mb-6">
+      <header className="mb-4">
         <h1 className="text-3xl font-bold tracking-tight">Post-Assistent</h1>
         <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
           Deine Briefe und Vorgänge auf einen Blick.
@@ -15,8 +13,10 @@ export default function Startseite() {
       </header>
 
       <main className="flex flex-1 flex-col pb-32">
-        <h2 className="mb-3 text-lg font-semibold">Vorgänge</h2>
-        <Vorgangsliste vorgaenge={vorgaenge} />
+        {/* Die Vorgänge hängen vom Login ab und werden erst bei der Anfrage geladen */}
+        <Suspense fallback={<UebersichtLaedt />}>
+          <VorgangsUebersicht />
+        </Suspense>
       </main>
 
       {/* Großer Button, fest am unteren Rand – gut mit dem Daumen erreichbar */}

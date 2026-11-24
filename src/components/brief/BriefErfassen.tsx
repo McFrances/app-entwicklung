@@ -11,8 +11,10 @@ import {
   PDF_TYP,
   type BriefAnalyse,
 } from "@/lib/brief-analyse";
+import { fristSpeichern } from "@/app/vorgang/aktionen";
 import { AnalyseErgebnis } from "./AnalyseErgebnis";
 import { bildVerkleinern } from "./bild-verkleinern";
+import { FristBestaetigung } from "./FristBestaetigung";
 
 type Seite = {
   id: string;
@@ -23,7 +25,14 @@ type Seite = {
 type Zustand =
   | { schritt: "auswahl"; fehler?: string }
   | { schritt: "analyse" }
-  | { schritt: "ergebnis"; analyse: BriefAnalyse; beispiel: boolean };
+  | {
+      schritt: "ergebnis";
+      analyse: BriefAnalyse;
+      beispiel: boolean;
+      /** ID des gespeicherten Vorgangs; null, wenn das Speichern fehlgeschlagen ist */
+      vorgangId: string | null;
+      warnung?: string;
+    };
 
 const ERLAUBT = [...BILD_TYPEN, PDF_TYP].join(",");
 
@@ -117,8 +126,14 @@ export function BriefErfassen() {
         setZustand({ schritt: "auswahl", fehler: "Die Antwort war unvollständig. Bitte versuche es noch einmal." });
         return;
       }
-      const beispiel = !!daten && typeof daten === "object" && "beispiel" in daten && daten.beispiel === true;
-      setZustand({ schritt: "ergebnis", analyse: geprueft.data, beispiel });
+      const objekt = daten && typeof daten === "object" ? (daten as Record<string, unknown>) : {};
+      setZustand({
+        schritt: "ergebnis",
+        analyse: geprueft.data,
+        beispiel: objekt.beispiel === true,
+        vorgangId: typeof objekt.vorgangId === "string" ? objekt.vorgangId : null,
+        warnung: typeof objekt.warnung === "string" ? objekt.warnung : undefined,
+      });
       window.scrollTo({ top: 0 });
     } catch {
       setZustand({
@@ -148,12 +163,45 @@ export function BriefErfassen() {
               Analyse deines Briefs.
             </p>
           )}
-          <AnalyseErgebnis analyse={zustand.analyse} />
+          {zustand.warnung ? (
+            <p
+              role="alert"
+              className="mb-4 rounded-xl bg-amber-100 px-4 py-3 text-base text-amber-950 dark:bg-amber-950 dark:text-amber-100"
+            >
+              {zustand.warnung}
+            </p>
+          ) : (
+            <p
+              role="status"
+              className="mb-4 rounded-xl bg-green-100 px-4 py-3 text-base text-green-900 dark:bg-green-950 dark:text-green-200"
+            >
+              ✓ Als Vorgang gespeichert. Du findest ihn in der Übersicht.
+            </p>
+          )}
+          <AnalyseErgebnis
+            analyse={zustand.analyse}
+            fristBereich={
+              <FristBestaetigung
+                vorschlag={zustand.analyse.frist}
+                // Ohne gespeicherten Vorgang gilt die Bestätigung nur auf dieser Seite
+                onBestaetigt={
+                  zustand.vorgangId
+                    ? (frist) => fristSpeichern(zustand.vorgangId as string, frist)
+                    : undefined
+                }
+              />
+            }
+          />
         </main>
         <AktionsLeiste>
-          <button type="button" onClick={neuBeginnen} className={HAUPT_BUTTON}>
-            Weiteren Brief hinzufügen
-          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" onClick={neuBeginnen} className={NEBEN_BUTTON}>
+              Weiterer Brief
+            </button>
+            <Link href="/" className={HAUPT_BUTTON}>
+              Zur Übersicht
+            </Link>
+          </div>
         </AktionsLeiste>
       </>
     );
@@ -304,6 +352,9 @@ export function BriefErfassen() {
 
 const HAUPT_BUTTON =
   "flex min-h-14 w-full items-center justify-center rounded-2xl bg-blue-600 px-6 text-lg font-semibold text-white shadow-lg transition hover:bg-blue-700 active:scale-[0.98] active:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none dark:disabled:bg-slate-700 dark:disabled:text-slate-400";
+
+const NEBEN_BUTTON =
+  "flex min-h-14 w-full items-center justify-center rounded-2xl border-2 border-slate-300 px-4 text-lg font-semibold transition hover:bg-slate-100 active:scale-[0.98] dark:border-slate-600 dark:hover:bg-slate-800";
 
 const AUSWAHL_BUTTON =
   "flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-blue-200 bg-white px-3 text-base font-semibold text-blue-800 shadow-sm transition hover:border-blue-400 active:scale-[0.98] disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-blue-300";

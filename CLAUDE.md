@@ -13,16 +13,22 @@ Briefkastens erfassen kann.
 
 Umgesetzt:
 
-- Startseite mit der Vorgangsliste (zurzeit immer leer, noch keine Datenquelle) und einem
-  Hinweis, solange keine Vorgänge vorhanden sind
+- Login per E-Mail-Link (Supabase Auth, ohne Passwort). Alle Seiten außer `/login` und `/auth/*`
+  verlangen die Anmeldung (`src/proxy.ts`)
+- Startseite (`/`): alle Vorgänge des Nutzers, sortiert nach nächster Frist (überfällige zuerst,
+  ohne Frist danach), mit Status offen / in Arbeit / erledigt. Erledigte stehen eingeklappt am Ende.
+- Vorgang öffnen (`/vorgang/[id]`): Status ändern, Frist bestätigen/ändern, Analyse und Seiten des
+  Briefs ansehen, Vorgang löschen (samt Dateien)
 - Großer, fest am unteren Rand stehender Button „Brief hinzufügen“ → `/brief/neu`
 - Seite „Brief hinzufügen“ (`/brief/neu`): Fotos aufnehmen (Kamera) oder Bilder/PDF hochladen,
   mehrere Seiten, Seiten entfernen. Fotos werden im Browser auf max. 2000 px verkleinert.
 - KI-Analyse über die Claude API (serverseitig): liefert `absender`, `kategorie`,
   `zusammenfassung_einfach`, `was_ist_zu_tun` (Liste), `frist` (Datum oder null),
   `folgen_bei_nichtstun`, `dringlichkeit` (niedrig/mittel/hoch)
+- Jeder analysierte Brief wird sofort als Vorgang gespeichert (Frist noch unbestätigt, Dateien im
+  privaten Storage-Bucket `dokumente`)
 - Ergebnisansicht mit Dringlichkeit, Kategorie, Absender und Erklärungen; die Frist muss der
-  Nutzer bestätigen oder ändern. Unter jeder Erklärung steht der Hinweis, dass es keine
+  Nutzer bestätigen oder ändern (wird in der Datenbank gespeichert). Unter jeder Erklärung steht der Hinweis, dass es keine
   Rechtsberatung ist.
 
 - Beispielmodus: Ohne API-Schlüssel liefert die Analyse feste Beispiel-Antworten (3 Varianten
@@ -32,9 +38,9 @@ Umgesetzt:
 Geplant (noch nicht umgesetzt):
 
 - Echten KI-Aufruf mit API-Schlüssel einschalten und mit echten Briefen testen
-- Analysierte Briefe als Vorgänge speichern (inkl. bestätigter Frist) und in der Liste anzeigen
-- Vorgang öffnen, bearbeiten und als erledigt markieren
-- Fristen und Erinnerungen
+- Erinnerungen: Die Tabelle `erinnerung` samt Zugriffsschutz existiert, aber es gibt noch keine
+  Oberfläche und keinen Versand (z. B. Push oder E-Mail vor Ablauf der Frist)
+- Vorgänge bearbeiten (Absender, Kategorie), Suche und Filter
 
 ## Technik
 
@@ -54,8 +60,28 @@ Geplant (noch nicht umgesetzt):
   - `src/app/api/brief/analysieren/route.ts`: Route Handler, nimmt `FormData` (Feld `seiten`)
     entgegen, prüft Typ und Größe, gibt `{ analyse }` oder `{ fehler }` zurück
   - Komponenten der Seite in `src/components/brief/`
-- Wiederverwendbare Komponenten liegen in `src/components/`, z. B. `Vorgangsliste.tsx`
-  (enthält auch den Typ `Vorgang`)
+- **Supabase** (Region Frankfurt `eu-central-1`) mit `@supabase/ssr` und `@supabase/supabase-js`:
+  Auth (E-Mail-Link), Postgres, Storage. Kein Prisma/ORM; Abfragen über den Supabase-Client.
+  - `supabase/migrations/*.sql`: Tabellen `vorgang`, `dokument`, `erinnerung`, Bucket `dokumente`
+    und alle Row-Level-Security-Regeln. Neue Änderungen am Schema kommen als **neue** Migrations-
+    Datei dazu (nie die alte ändern) und müssen im SQL Editor eingespielt werden.
+  - `supabase/templates/magic-link.html`: E-Mail-Vorlage (token_hash-Link, funktioniert auch im
+    anderen Browser)
+  - `supabase/tests/`: Test des Zugriffsschutzes gegen eine lokale Postgres-Datenbank
+  - `src/lib/supabase/server.ts`: Client für Server-Code (`erstelleServerClient()`) und
+    `aktuellerNutzer()`; `sitzung.ts` und `src/proxy.ts` erneuern die Sitzung und leiten auf
+    `/login` um; `konfiguration.ts` liest die Umgebungsvariablen
+  - `src/app/login/`: Login-Seite, Server-Aktionen `loginLinkSenden` und `abmelden`;
+    `src/app/auth/confirm/route.ts` löst den Link aus der E-Mail ein
+  - `src/app/vorgang/aktionen.ts`: Server-Aktionen `statusAendern`, `fristSpeichern`,
+    `vorgangLoeschen`; `src/lib/vorgang-speichern.server.ts` speichert beim Analysieren
+  - `src/lib/vorgang.ts`: Typen, Status-Texte, Frist-Anzeige und Sortierung
+- Wiederverwendbare Komponenten liegen in `src/components/`, z. B. `Vorgangsliste.tsx`,
+  `VorgangsUebersicht.tsx` (lädt die Daten) und `vorgang/` (Status, Löschen)
+
+Umgebungsvariablen: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (öffentlich,
+der Schutz kommt von RLS; der geheime `service_role`-Schlüssel wird nie gebraucht und darf nicht in
+die App), `ANTHROPIC_API_KEY`.
 
 API-Schlüssel: `ANTHROPIC_API_KEY` in `.env.local` (Vorlage: `.env.example`). Der Schlüssel darf
 nie im Browser landen: kein `NEXT_PUBLIC_`-Präfix, Claude nur aus Server-Code aufrufen.
@@ -87,4 +113,12 @@ Befehle:
 - Hell- und Dunkelmodus unterstützen (`dark:`-Klassen, Farben in `globals.css`).
 - KI-Erklärungen immer mit dem Hinweis „keine Rechtsberatung“ (`KeineRechtsberatung`) anzeigen.
   Von der KI erkannte Fristen nie ungeprüft übernehmen, sondern vom Nutzer bestätigen lassen.
+- **Zugriffsschutz:** Jede neue Tabelle bekommt `nutzer_id uuid default auth.uid()`, aktiviertes
+  Row Level Security und Regeln pro Befehl (`for select/insert/update/delete to authenticated`
+  mit `(select auth.uid()) = nutzer_id`). `anon` bekommt nichts. Nach Änderungen
+  `supabase/tests/rls-test.sh` erweitern und laufen lassen. In der App immer den Client des
+  Nutzers (`erstelleServerClient()`) benutzen, nie einen Admin-Client, damit RLS greift.
+- **Cache Components:** Alles, was Cookies/Anmeldung oder die aktuelle Uhrzeit braucht, läuft in einer
+  Komponente hinter `<Suspense>` und beginnt mit `await connection()` (aus `next/server`). Sonst bricht
+  der Build ab oder die Seite zeigt Fehler.
 - Vor dem Committen `npm run lint` und `npm run build` ausführen.
