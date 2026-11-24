@@ -25,8 +25,13 @@ Umgesetzt:
   Nutzer bestätigen oder ändern. Unter jeder Erklärung steht der Hinweis, dass es keine
   Rechtsberatung ist.
 
+- Beispielmodus: Ohne API-Schlüssel liefert die Analyse feste Beispiel-Antworten (3 Varianten
+  reihum: Rechnung mit Frist, dringende Mahnung, Werbung ohne Frist), damit sich die ganze App
+  testen lässt. Die Ergebnisseite zeigt dann den Hinweis „Beispielmodus“.
+
 Geplant (noch nicht umgesetzt):
 
+- Echten KI-Aufruf mit API-Schlüssel einschalten und mit echten Briefen testen
 - Analysierte Briefe als Vorgänge speichern (inkl. bestätigter Frist) und in der Liste anzeigen
 - Vorgang öffnen, bearbeiten und als erledigt markieren
 - Fristen und Erinnerungen
@@ -43,7 +48,9 @@ Geplant (noch nicht umgesetzt):
   (`fallbacks: "default"`)
   - `src/lib/brief-analyse.ts`: Zod-Schema der Antwort, erlaubte Dateitypen, Größenlimits
     (gemeinsam für Browser und Server)
-  - `src/lib/claude.server.ts`: Prompt und API-Aufruf, nur auf dem Server (`server-only`)
+  - `src/lib/claude.server.ts`: Prompt und API-Aufruf, nur auf dem Server (`server-only`);
+    `istBeispielModus()` entscheidet, ob statt Claude die Beispiel-Antwort kommt
+  - `src/lib/beispiel-antwort.ts`: die Beispiel-Antworten (gleiche Form wie die echte Antwort)
   - `src/app/api/brief/analysieren/route.ts`: Route Handler, nimmt `FormData` (Feld `seiten`)
     entgegen, prüft Typ und Größe, gibt `{ analyse }` oder `{ fehler }` zurück
   - Komponenten der Seite in `src/components/brief/`
@@ -52,6 +59,9 @@ Geplant (noch nicht umgesetzt):
 
 API-Schlüssel: `ANTHROPIC_API_KEY` in `.env.local` (Vorlage: `.env.example`). Der Schlüssel darf
 nie im Browser landen: kein `NEXT_PUBLIC_`-Präfix, Claude nur aus Server-Code aufrufen.
+Beispielmodus: `KI_MODUS=beispiel` (immer an) oder `KI_MODUS=echt` (immer aus). Ohne Angabe ist er nur
+bei `npm run dev` ohne API-Schlüssel an; ein Produktions-Build ohne Schlüssel meldet einen Fehler,
+damit nie versehentlich Beispieldaten als echte Analyse erscheinen.
 
 Befehle:
 

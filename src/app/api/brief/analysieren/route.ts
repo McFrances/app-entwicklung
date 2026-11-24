@@ -6,7 +6,13 @@ import {
   MAX_GESAMTGROESSE,
   PDF_TYP,
 } from "@/lib/brief-analyse";
-import { AnalyseFehler, analysiereBrief, type BriefSeite } from "@/lib/claude.server";
+import { beispielAntwort } from "@/lib/beispiel-antwort";
+import {
+  AnalyseFehler,
+  analysiereBrief,
+  istBeispielModus,
+  type BriefSeite,
+} from "@/lib/claude.server";
 
 // Die Analyse mehrseitiger Briefe kann eine Weile dauern.
 export const maxDuration = 120;
@@ -20,7 +26,8 @@ function istBildTyp(typ: string): typ is (typeof BILD_TYPEN)[number] {
 }
 
 export async function POST(request: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const beispiel = istBeispielModus();
+  if (!beispiel && !process.env.ANTHROPIC_API_KEY) {
     console.error("ANTHROPIC_API_KEY fehlt. Bitte in .env.local eintragen.");
     return fehler("Die KI-Analyse ist noch nicht eingerichtet (API-Schlüssel fehlt).", 500);
   }
@@ -53,6 +60,12 @@ export async function POST(request: Request) {
     } else {
       return fehler(`„${datei.name}“ hat ein nicht unterstütztes Format. Erlaubt sind Fotos (JPG, PNG, WebP) und PDF.`, 415);
     }
+  }
+
+  if (beispiel) {
+    // Die Dateien wurden oben wie echt geprüft; nur die KI-Antwort ist ausgedacht.
+    await new Promise((fertig) => setTimeout(fertig, 1500)); // Ladeanzeige sichtbar machen
+    return Response.json({ analyse: beispielAntwort(), beispiel: true });
   }
 
   try {

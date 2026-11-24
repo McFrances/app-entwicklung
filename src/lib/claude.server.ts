@@ -25,6 +25,21 @@ export type BriefSeite =
 
 export class AnalyseFehler extends Error {}
 
+/**
+ * Beispielmodus: Statt Claude zu fragen, kommt eine feste Beispiel-Antwort.
+ * - KI_MODUS=beispiel schaltet ihn immer ein,
+ * - KI_MODUS=echt schaltet ihn immer aus,
+ * - ohne Einstellung ist er nur in der Entwicklung (npm run dev) und nur
+ *   ohne API-Schlüssel an. Ein Produktions-Build ohne Schlüssel meldet
+ *   stattdessen einen Fehler, damit nie versehentlich Beispieldaten erscheinen.
+ */
+export function istBeispielModus(): boolean {
+  const modus = process.env.KI_MODUS;
+  if (modus === "beispiel") return true;
+  if (modus === "echt") return false;
+  return !process.env.ANTHROPIC_API_KEY && process.env.NODE_ENV !== "production";
+}
+
 export async function analysiereBrief(seiten: BriefSeite[]): Promise<BriefAnalyse> {
   const heute = new Date().toISOString().slice(0, 10);
 

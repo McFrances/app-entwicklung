@@ -23,7 +23,7 @@ type Seite = {
 type Zustand =
   | { schritt: "auswahl"; fehler?: string }
   | { schritt: "analyse" }
-  | { schritt: "ergebnis"; analyse: BriefAnalyse };
+  | { schritt: "ergebnis"; analyse: BriefAnalyse; beispiel: boolean };
 
 const ERLAUBT = [...BILD_TYPEN, PDF_TYP].join(",");
 
@@ -117,7 +117,8 @@ export function BriefErfassen() {
         setZustand({ schritt: "auswahl", fehler: "Die Antwort war unvollständig. Bitte versuche es noch einmal." });
         return;
       }
-      setZustand({ schritt: "ergebnis", analyse: geprueft.data });
+      const beispiel = !!daten && typeof daten === "object" && "beispiel" in daten && daten.beispiel === true;
+      setZustand({ schritt: "ergebnis", analyse: geprueft.data, beispiel });
       window.scrollTo({ top: 0 });
     } catch {
       setZustand({
@@ -138,6 +139,15 @@ export function BriefErfassen() {
       <>
         <main className="flex flex-1 flex-col pb-32">
           <h1 className="mb-4 text-2xl font-bold">Dein Brief</h1>
+          {zustand.beispiel && (
+            <p
+              role="note"
+              className="mb-4 rounded-xl bg-violet-100 px-4 py-3 text-base text-violet-900 dark:bg-violet-950 dark:text-violet-200"
+            >
+              <strong>Beispielmodus:</strong> Das ist eine ausgedachte Beispiel-Antwort, keine echte
+              Analyse deines Briefs.
+            </p>
+          )}
           <AnalyseErgebnis analyse={zustand.analyse} />
         </main>
         <AktionsLeiste>

@@ -13,6 +13,10 @@ cp .env.example .env.local   # danach ANTHROPIC_API_KEY in .env.local eintragen
 npm run dev
 ```
 
+Ohne API-Schlüssel startet die App im **Beispielmodus**: Beim Analysieren kommt eine feste
+Beispiel-Antwort statt eines echten KI-Aufrufs (die Seite weist darauf hin). So lässt sich alles
+ausprobieren. Sobald in `.env.local` ein Schlüssel steht, wird die echte KI benutzt.
+
 Den API-Schlüssel bekommst du unter https://platform.claude.com/ (Bereich „API Keys“).
 
 Dann im Browser http://localhost:3000 öffnen.
