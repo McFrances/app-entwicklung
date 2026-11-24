@@ -1,0 +1,16 @@
+<!--
+  E-Mail-Vorlage "Magic Link" für den Login per E-Mail-Link.
+  Einfügen im Supabase-Dashboard: Authentication → Email Templates → "Magic Link".
+  Betreff z. B.: Dein Login-Link für den Post-Assistenten
+
+  Der Link enthält ein Einmal-Token (token_hash) und funktioniert auch dann, wenn die E-Mail
+  in einer Mail-App oder einem anderen Browser geöffnet wird als dem, in dem du den Link
+  angefordert hast. Das ist auf dem Handy wichtig.
+
+  Wichtig: Dieselbe Vorlage gilt auch für "Confirm sign up" (neue Adressen). Füge sie dort
+  ebenfalls ein, damit sich neue Nutzer genauso anmelden können.
+-->
+<h2>Dein Login-Link</h2>
+<p>Tippe auf den Link, um dich im Post-Assistenten anzumelden:</p>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Jetzt anmelden</a></p>
+<p>Der Link ist nur kurze Zeit gültig und kann nur einmal benutzt werden. Wenn du ihn nicht angefordert hast, kannst du diese E-Mail ignorieren.</p>
