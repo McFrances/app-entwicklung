@@ -4,6 +4,7 @@ import {
   MAX_DATEIEN,
   MAX_DATEIGROESSE,
   MAX_GESAMTGROESSE,
+  MAX_GROESSE_TEXT,
   PDF_TYP,
 } from "@/lib/brief-analyse";
 import { beispielAntwort } from "@/lib/beispiel-antwort";
@@ -61,10 +62,10 @@ export async function POST(request: Request) {
   const zumSpeichern: HochgeladeneSeite[] = [];
   for (const datei of dateien) {
     if (datei.size > MAX_DATEIGROESSE) {
-      return fehler(`„${datei.name}“ ist zu groß (höchstens 10 MB je Datei).`, 413);
+      return fehler(`„${datei.name}“ ist zu groß (höchstens ${MAX_GROESSE_TEXT}).`, 413);
     }
     gesamt += datei.size;
-    if (gesamt > MAX_GESAMTGROESSE) return fehler("Die Dateien sind zusammen zu groß (höchstens 25 MB).", 413);
+    if (gesamt > MAX_GESAMTGROESSE) return fehler(`Die Dateien sind zusammen zu groß (höchstens ${MAX_GROESSE_TEXT}).`, 413);
 
     const bytes = Buffer.from(await datei.arrayBuffer());
     const base64 = bytes.toString("base64");

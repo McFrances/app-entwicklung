@@ -9,6 +9,14 @@ Der Post-Assistent ist eine Web-App, mit der man eingehende Briefe (Papierpost) 
 auf dem Handy schnell und einfach bedienbar sein, damit man einen Brief direkt beim Öffnen des
 Briefkastens erfassen kann.
 
+## Arbeitsweise
+
+Der Nutzer arbeitet nur vom **iPad, ohne Computer**: Alles läuft über Claude im Browser, GitHub und
+Vercel im Browser. Anleitungen deshalb für Anfänger, Schritt für Schritt, ohne Terminal und ohne
+lokalen Entwicklungsserver. Neue Funktionen erscheinen über einen Pull Request, den der Nutzer auf
+GitHub zusammenführt (Merge); danach veröffentlicht Vercel sie automatisch. Einen Pull Request nur
+anlegen, wenn der Nutzer das möchte.
+
 ## Funktionen
 
 Umgesetzt:
@@ -76,6 +84,16 @@ Geplant (noch nicht umgesetzt):
   - `src/app/vorgang/aktionen.ts`: Server-Aktionen `statusAendern`, `fristSpeichern`,
     `vorgangLoeschen`; `src/lib/vorgang-speichern.server.ts` speichert beim Analysieren
   - `src/lib/vorgang.ts`: Typen, Status-Texte, Frist-Anzeige und Sortierung
+- **Vercel** (Hosting): Jeder Push auf `main` veröffentlicht automatisch, andere Zweige und Pull
+  Requests bekommen Vorschau-Adressen. `vercel.json` setzt die Funktions-Region auf `fra1`
+  (Frankfurt, nah an Supabase). Die Umgebungsvariablen stehen in Vercel unter Settings →
+  Environment Variables (nicht im Repository). Der Login-Link der E-Mail führt immer zur
+  Site URL aus Supabase, also zur Hauptadresse. Die Anleitung steht in der README.
+- **Upload-Grenze 4 MB** für alle Seiten eines Briefs zusammen (`MAX_GESAMTGROESSE` in
+  `src/lib/brief-analyse.ts`), weil Vercel pro Anfrage nur 4,5 MB annimmt. Fotos verkleinert
+  `src/components/brief/bild-verkleinern.ts` stufenweise automatisch; PDFs nicht. Der Server prüft
+  die Grenze zusätzlich. Wer größere Briefe braucht: Dateien direkt vom Browser in den
+  Supabase-Storage hochladen und den Server nur die Pfade schicken.
 - Wiederverwendbare Komponenten liegen in `src/components/`, z. B. `Vorgangsliste.tsx`,
   `VorgangsUebersicht.tsx` (lädt die Daten) und `vorgang/` (Status, Löschen)
 
@@ -83,11 +101,12 @@ Umgebungsvariablen: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABL
 der Schutz kommt von RLS; der geheime `service_role`-Schlüssel wird nie gebraucht und darf nicht in
 die App), `ANTHROPIC_API_KEY`.
 
-API-Schlüssel: `ANTHROPIC_API_KEY` in `.env.local` (Vorlage: `.env.example`). Der Schlüssel darf
+API-Schlüssel: `ANTHROPIC_API_KEY` in Vercel (lokal: `.env.local`, Vorlage: `.env.example`). Der Schlüssel darf
 nie im Browser landen: kein `NEXT_PUBLIC_`-Präfix, Claude nur aus Server-Code aufrufen.
 Beispielmodus: `KI_MODUS=beispiel` (immer an) oder `KI_MODUS=echt` (immer aus). Ohne Angabe ist er nur
-bei `npm run dev` ohne API-Schlüssel an; ein Produktions-Build ohne Schlüssel meldet einen Fehler,
-damit nie versehentlich Beispieldaten als echte Analyse erscheinen.
+bei `npm run dev` ohne API-Schlüssel an; ein Produktions-Build (auch auf Vercel) ohne Schlüssel meldet
+einen Fehler, damit nie versehentlich Beispieldaten als echte Analyse erscheinen. Auf Vercel gilt
+deshalb `KI_MODUS=beispiel`, solange es noch keinen `ANTHROPIC_API_KEY` gibt.
 
 Befehle:
 

@@ -8,17 +8,21 @@ import {
   MAX_DATEIEN,
   MAX_DATEIGROESSE,
   MAX_GESAMTGROESSE,
+  MAX_GROESSE_TEXT,
   PDF_TYP,
   type BriefAnalyse,
 } from "@/lib/brief-analyse";
 import { fristSpeichern } from "@/app/vorgang/aktionen";
 import { AnalyseErgebnis } from "./AnalyseErgebnis";
-import { bildVerkleinern } from "./bild-verkleinern";
+import { aufGroesseBringen, bildVerkleinern } from "./bild-verkleinern";
 import { FristBestaetigung } from "./FristBestaetigung";
 
 type Seite = {
   id: string;
+  /** Die Datei, die hochgeladen wird (Fotos schon verkleinert). */
   datei: File;
+  /** Die Datei, wie der Nutzer sie ausgewählt hat. Von hier aus wird bei Bedarf stärker verkleinert. */
+  original: File;
   vorschauUrl: string | null; // nur bei Bildern
 };
 
@@ -67,19 +71,25 @@ export function BriefErfassen() {
       return;
     }
 
+    // PDFs lassen sich nicht verkleinern. Fotos werden unten verkleinert und notfalls später stärker.
+    const zuGrossePdf = neu.find((d) => d.type === PDF_TYP && d.size > MAX_DATEIGROESSE);
+    if (zuGrossePdf) {
+      setZustand({
+        schritt: "auswahl",
+        fehler: `„${zuGrossePdf.name}“ ist zu groß (höchstens ${MAX_GROESSE_TEXT}). Fotografiere die Seiten stattdessen.`,
+      });
+      return;
+    }
+
     setBereitetVor(true);
     try {
-      const verarbeitet = await Promise.all(neu.map(bildVerkleinern));
-      const zuGross = verarbeitet.find((d) => d.size > MAX_DATEIGROESSE);
-      if (zuGross) {
-        setZustand({ schritt: "auswahl", fehler: `„${zuGross.name}“ ist zu groß (höchstens 10 MB).` });
-        return;
-      }
+      const verarbeitet = await Promise.all(neu.map((datei) => bildVerkleinern(datei)));
       setSeiten((alt) => [
         ...alt,
-        ...verarbeitet.map((datei) => ({
+        ...verarbeitet.map((datei, index) => ({
           id: crypto.randomUUID(),
           datei,
+          original: neu[index],
           vorschauUrl: datei.type.startsWith("image/") ? URL.createObjectURL(datei) : null,
         })),
       ]);
@@ -98,15 +108,28 @@ export function BriefErfassen() {
   }
 
   async function analysieren() {
-    const gesamt = seiten.reduce((summe, s) => summe + s.datei.size, 0);
-    if (gesamt > MAX_GESAMTGROESSE) {
-      setZustand({ schritt: "auswahl", fehler: "Die Seiten sind zusammen zu groß (höchstens 25 MB)." });
-      return;
+    setZustand({ schritt: "analyse" });
+
+    // Der Upload darf höchstens MAX_GESAMTGROESSE groß sein (Grenze von Vercel). Reicht das nicht,
+    // werden die Fotos stufenweise stärker verkleinert, bis alles passt.
+    let dateien = seiten.map((s) => s.datei);
+    if (dateien.reduce((summe, d) => summe + d.size, 0) > MAX_GESAMTGROESSE) {
+      const kleiner = await aufGroesseBringen(
+        seiten.map((s) => s.original),
+        MAX_GESAMTGROESSE,
+      );
+      if (!kleiner) {
+        setZustand({
+          schritt: "auswahl",
+          fehler: `Die Seiten sind zusammen zu groß (höchstens ${MAX_GROESSE_TEXT}). Entferne eine Seite oder nimm Fotos statt einer großen PDF.`,
+        });
+        return;
+      }
+      dateien = kleiner;
     }
 
-    setZustand({ schritt: "analyse" });
     const formData = new FormData();
-    seiten.forEach((s) => formData.append("seiten", s.datei));
+    dateien.forEach((datei) => formData.append("seiten", datei));
 
     try {
       const antwort = await fetch("/api/brief/analysieren", { method: "POST", body: formData });
@@ -115,7 +138,9 @@ export function BriefErfassen() {
         const meldung =
           daten && typeof daten === "object" && "fehler" in daten && typeof daten.fehler === "string"
             ? daten.fehler
-            : "Die Analyse ist fehlgeschlagen. Bitte versuche es noch einmal.";
+            : antwort.status === 413
+              ? `Die Seiten sind zu groß für den Upload (höchstens ${MAX_GROESSE_TEXT}). Entferne eine Seite und versuche es noch einmal.`
+              : "Die Analyse ist fehlgeschlagen. Bitte versuche es noch einmal.";
         setZustand({ schritt: "auswahl", fehler: meldung });
         return;
       }

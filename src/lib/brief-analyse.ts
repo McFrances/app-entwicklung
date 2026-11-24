@@ -32,7 +32,12 @@ export type BriefAnalyse = z.infer<typeof BriefAnalyseSchema>;
 export const BILD_TYPEN = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
 export const PDF_TYP = "application/pdf";
 
-/** Obergrenzen, die Browser und Server gleichermaßen prüfen. */
+/**
+ * Obergrenzen, die Browser und Server gleichermaßen prüfen.
+ * Vercel nimmt pro Anfrage höchstens 4,5 MB entgegen. 4 MB lassen Platz für den Rahmen
+ * der Anfrage. Fotos verkleinert die App bei Bedarf automatisch, PDFs nicht.
+ */
 export const MAX_DATEIEN = 10;
-export const MAX_DATEIGROESSE = 10 * 1024 * 1024; // 10 MB je Datei
-export const MAX_GESAMTGROESSE = 25 * 1024 * 1024; // 25 MB insgesamt
+export const MAX_GESAMTGROESSE = 4 * 1024 * 1024; // 4 MB für alle Seiten zusammen
+export const MAX_DATEIGROESSE = MAX_GESAMTGROESSE; // eine einzelne Datei darf also höchstens alles belegen
+export const MAX_GROESSE_TEXT = "4 MB";
